@@ -170,6 +170,7 @@ const getImg = n => streamers.find(s=>s.name===n)?.img;
 let voteCount=0, inTop5=false, charts=[];
 let top5=[];
 let lastTop5Time = 0;
+let top5Cooldown = false;
 
 /* ===================== */
 /* 🔒 CORE MODULE: BADGE ASSETS */
@@ -321,7 +322,7 @@ const updates = {
 
   const cooldown = 30 * 60 * 1000;
 
-  if(voteCount >= 6 && Date.now() - lastTop5Time >= cooldown){
+  if(!top5Cooldown && voteCount >= 1 && Date.now() - lastTop5Time >= cooldown){
     lastTop5Time = Date.now();
     voteCount = 0;
     return startTop5();
@@ -339,6 +340,7 @@ window.vote=vote;
 /* DO NOT MODIFY — DEPENDENCIES: USER RANKING FLOW */
 /* ===================== */
 function startTop5(){
+	top5Cooldown = true;
   inTop5=true;
   document.getElementById("title").innerText="🔥 BUILD THE ULTIMATE TOP 5 🔥";
 
@@ -446,11 +448,12 @@ const globalTop5 = Object.entries(data)
     </div>
   `).join("");
 
-  setTimeout(()=>{
-    inTop5=false;
-    voteCount=0;
-    newBattle();
-  },4000);
+setTimeout(()=>{
+  inTop5=false;
+  voteCount=0;
+  top5Cooldown = false;
+  newBattle();
+},4000);
 }	
 
 /* ===================== */
