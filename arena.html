@@ -322,7 +322,7 @@ const updates = {
 
   const cooldown = 30 * 60 * 1000;
 
-  if(!top5Cooldown && voteCount >= 1 && Date.now() - lastTop5Time >= cooldown){
+  if(!top5Cooldown && voteCount >= 6 && Date.now() - lastTop5Time >= cooldown){
     lastTop5Time = Date.now();
     voteCount = 0;
     return startTop5();
