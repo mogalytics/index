@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+	
+<!-- ===================== page 2-->
+<!-- 🔒 CORE MODULE: DOCUMENT HEAD / PAGE IDENTITY -->
+<!-- DO NOT MODIFY — DEPENDENCIES: PAGE TITLE / CHARACTER ENCODING / BROWSER RENDER -->
+<!-- Changing charset, title, or head order may affect display and compatibility -->
+<!-- ===================== -->
+<title>Mogalytics</title>
+<!-- ===================== -->
+<!-- 🔒 CORE MODULE: EXTERNAL LIBRARY LOADER -->
+<!-- DO NOT MODIFY — DEPENDENCIES: CHART SYSTEM / RANKINGS DASHBOARD -->
+<!-- Removing or changing version may break charts or visuals -->
+<!-- ===================== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+	<!-- ===================== -->
+<!-- 🔒 CORE MODULE: GLOBAL VISUAL SYSTEM (CSS) -->
+<!-- DO NOT MODIFY — DEPENDENCIES: LAYOUT / MOBILE VIEW / BUTTONS / CARDS / CHARTS -->
+<!-- Edit only if explicitly requested for design changes -->
+<!-- ===================== -->
+<style>
+body {
+	
+  margin:0;
+  font-family:Arial;
+  background:#0f0f0f;
+  color:white;
+  text-align:center;
+  padding:20px;
+}
+.battle {
+  display:flex;
+  justify-content:center;
+  gap:40px;
+  flex-wrap:wrap;
+  margin:30px 0;
+}
+.card {
+  background:#1a1a1a;
+  padding:10px;
+  border-radius:16px;
+  width:200px;
+  cursor:pointer;
+  transition:.2s;
+  box-shadow:0 0 20px rgba(255,0,170,0.3);
+}
+.card:hover { transform:scale(1.05); }
+.card img {
+  width:100%;
+  height:240px;
+  object-fit:cover;
+  border-radius:10px;
+}
+.name { margin-top:6px; }
+.top5-selected { outline:2px solid #ff00aa; }
+.rank-num { color:#ffd700; font-weight:bold; }
+#result { margin:20px 0; min-height:40px; font-size:1.3rem; }
+.global-btn {
+  padding:14px 30px;
+  border:none;
+  border-radius:40px;
+  background:linear-gradient(45deg,#ff00aa,#00ffff);
+  font-weight:bold;
+  cursor:pointer;
+  font-size:1.1rem;
+}
+#chartBox { margin-top:40px; }
+.chart-grid {
+  display:grid;
+  gap:30px;
+  grid-template-columns:repeat(4,1fr);
+}
+.chart-col { display:flex; flex-direction:column; gap:30px; }
+.chart-item {
+  background:#1a1a1a;
+  padding:15px;
+  border-radius:12px;
+}
+.chart-item canvas {
+  width:100% !important;
+  height:320px !important;
+}
+.row {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  margin:10px 0;
+}
+.stream { border-radius:10px; object-fit:cover; }
+.badge { width:18px; height:18px; }
+.stream.rank1 { width:100px; }
+.stream.rank2 { width:88px; }
+.stream.rank3 { width:75px; }
+.stream.rank4 { width:63px; }
+.stream.rank5 { width:55px; }
+</style>
+</head>
+
+<body>
+	<!-- ===================== -->
+<!-- 🔒 CORE MODULE: PRIMARY UI STRUCTURE -->
+<!-- DO NOT MODIFY — DEPENDENCIES: GAME LOOP / DOM TARGETS / BUTTON ACTIONS -->
+<!-- IDs used by JavaScript: title, battle, result, chartBox, chartGrid -->
+<!-- ===================== -->
+	<div style="text-align:center; margin-bottom:20px;">
+  <a href="https://www.google.com" target="_blank">
+    <img src="Logo.png" alt="Logo" style="max-width:500px; height:auto;">
+  </a>
+</div>
+	
+<h1 id="title">🔥 CHARISMA BATTLE</h1>
+<div id="battle" class="battle"></div>
+<p id="result"></p>
+
+<button class="global-btn" onclick="toggleChart()">🔄 Refresh Rankings</button>
+
+<div id="chartBox">
+  <div id="chartGrid" class="chart-grid"></div>
+</div>
+<!-- ===================== -->
+<!-- 🔒 CORE MODULE: APPLICATION SCRIPT ENTRY -->
+<!-- DO NOT MODIFY — DEPENDENCIES: FIREBASE / GAME SYSTEM / MODULE IMPORTS -->
+<!-- Script type=module required for imports -->
+<!-- ===================== -->
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, increment } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+/* ===================== */
+/* 🔒 CORE MODULE: FIREBASE INITIALIZATION */
+/* DO NOT MODIFY — DEPENDENCIES: ALL DATABASE READS / WRITES / STATS SYSTEM */
+/* ===================== */
+const db = getFirestore(initializeApp({
+  apiKey:"AIzaSyA8Uo2ova4ink0OH4OxrheYNnQWUq86xIk",
+  authDomain:"mogalytics-3c9e2.firebaseapp.com",
+  projectId:"mogalytics-3c9e2"
+}));
+
+/* ===================== */
+/* 🔒 CORE MODULE: STREAMER DATASET */
+/* DO NOT MODIFY — DEPENDENCIES: IMAGE LOOKUPS / BATTLE MATCHUPS / TOP 5 */
+/* ===================== */
+const streamers = [
+  { name:"Clav", img:"Clavicular.webp" },
+  { name:"Androgenic", img:"Andro.webp" },
+  { name:"Gymskin", img:"Gymskin.webp" },
+  { name:"xQc", img:"XQC.webp" },
+  { name:"IShowSpeed", img:"SPEED.webp" },
+  { name:"Lacy", img:"Lacy.webp" },
+  { name:"Marlon", img:"Marlon.webp" },
+  { name:"Drago", img:"Drago.webp" },
+  { name:"T", img:"T.webp" }
+];
+
+/* ===================== */
+/* 🔒 CORE MODULE: IMAGE RESOLUTION HELPER */
+/* DO NOT MODIFY — DEPENDENCIES: TOP 5 DISPLAY / PROFILE RENDERS */
+/* ===================== */
+const getImg = n => streamers.find(s=>s.name===n)?.img;
+
+/* ===================== */
+/* 🔒 CORE MODULE: GLOBAL SESSION STATE */
+/* DO NOT MODIFY — DEPENDENCIES: MODE FLOW / COOLDOWNS / UI TIMERS */
+/* ===================== */
+let voteCount=0, inTop5=false, charts=[];
+let top5=[];
+let lastTop5Time = 0;
+
+/* ===================== */
+/* 🔒 CORE MODULE: BADGE ASSETS */
+/* DO NOT MODIFY — DEPENDENCIES: TOP 5 RANK VISUALS */
+/* ===================== */
+const badges=[
+  "1 NP_Dragon.webp",
+  "2 NP_H.webp",
+  "3 NP_Mirage.webp",
+  "4 NP_S.webp",
+  "5 NP_M.webp"
+];
+
+/* ===================== */
+/* 🔒 CORE MODULE: CHART PULSE EFFECT */
+/* DO NOT MODIFY — DEPENDENCIES: LIVE FEEDBACK / WINNER HIGHLIGHT */
+/* ===================== */
+function pulseBar(mode, winner){
+  charts.forEach(chart=>{
+    if(chart._mode !== mode) return;
+    const idx = chart.data.labels.indexOf(winner);
+    if(idx === -1) return;
+    const original = chart.data.datasets[0].data[idx];
+    chart.data.datasets[0].data[idx] = original + 1;
+    chart.update();
+    setTimeout(()=>{
+      chart.data.datasets[0].data[idx] = original;
+      chart.update();
+    },300);
+  });
+}
+
+/* ===================== */
+/* 🔒 CORE MODULE: MODE RANDOMIZER */
+/* DO NOT MODIFY — DEPENDENCIES: GAME LOOP / TITLE THEMES / STATS BUCKETS */
+/* ===================== */
+function pickMode(){
+  const r = Math.random();
+  if(r < 0.40) return "click";
+  if(r < 0.68) return "charisma";
+  if(r < 0.90) return "mog";
+  return "aura";
+}
+
+/* ===================== */
+/* 🔒 CORE MODULE: BATTLE GENERATOR */
+/* DO NOT MODIFY — DEPENDENCIES: PRIMARY GAMEPLAY LOOP */
+/* ===================== */
+function newBattle(){
+  if(inTop5) return;
+
+  const mode=pickMode();
+  window.mode=mode;
+
+  const t=document.getElementById("title");
+
+  if(mode==="charisma"){ t.innerText="🔥 CHARISMA BATTLE 🔥"; t.style.color="#ff00aa"; }
+  if(mode==="mog"){ t.innerText="💎 MOG BATTLE 💎"; t.style.color="#00ffff"; }
+  if(mode==="click"){ t.innerText="🟢 WHO WOULD YOU CLICK? 🟢"; t.style.color="#00ff88"; }
+  if(mode==="aura"){ t.innerText="✨ AURA BATTLE ✨"; t.style.color="#bb66ff"; }
+
+  let a=Math.floor(Math.random()*streamers.length);
+  let b;
+  do{ b=Math.floor(Math.random()*streamers.length); }while(a===b);
+
+  const L=streamers[a], R=streamers[b];
+
+  document.getElementById("battle").innerHTML = `
+    <div class="card" onclick="vote('${L.name}','${R.name}')">
+      <img src="${L.img}">
+      <div class="name">${L.name}</div>
+    </div>
+    <div class="card" onclick="vote('${R.name}','${L.name}')">
+      <img src="${R.img}">
+      <div class="name">${R.name}</div>
+    </div>
+  `;
+}
+
+/* ===================== */
+/* 🔒 CORE MODULE: VOTING ENGINE */
+/* DO NOT MODIFY — DEPENDENCIES: FIREBASE WRITES / RESULT TEXT / TOP 5 TRIGGERS */
+/* ===================== */
+async function vote(winner,loser){
+
+  if(window.locked) return;
+  window.locked = true;
+  setTimeout(()=>window.locked=false,800);
+
+  voteCount++;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const week = Math.ceil((now.getDate()) / 7);
+
+const hour = now.getHours();
+const day = now.getDay();
+const dateKey = now.toISOString().slice(0,10); // YYYY-MM-DD
+
+const sessionId =
+  localStorage.getItem("mog_sid") ||
+  (() => {
+    const id = crypto.randomUUID();
+    localStorage.setItem("mog_sid", id);
+    return id;
+  })();
+
+const isNewSession = !localStorage.getItem("mog_seen");
+if (isNewSession) localStorage.setItem("mog_seen", "1");
+
+const updates = {
+  [mode]: { [winner]: increment(1) },
+
+  meta: {
+    totalVotes: increment(1),
+    [`mode_${mode}`]: increment(1),
+    [`hour_${hour}`]: increment(1),
+    [`day_${day}`]: increment(1),
+    [`date_${dateKey}`]: increment(1),
+    ...(isNewSession && { uniqueSessions: increment(1) })
+  }
+};
+
+  try{
+  await Promise.all([
+    setDoc(doc(db,"stats","global"), updates, {merge:true}),
+    setDoc(doc(db,`stats/year_${year}`), updates, {merge:true}),
+    setDoc(doc(db,`stats/month_${year}_${month}`), updates, {merge:true}),
+    setDoc(doc(db,`stats/week_${year}_${month}_${week}`), updates, {merge:true})
+  ]);
+}catch(e){
+  console.error("Write failed:", e);
+}
+
+  const snap = await getDoc(doc(db,"stats","global"));
+  const data = snap.data() || {};
+
+  const w = data?.[mode]?.[winner] || 0;
+  const l = data?.[mode]?.[loser] || 0;
+
+  const total = w + l;
+  const pct = total > 0 ? Math.round((w / total) * 100) : 50;
+
+  document.getElementById("result").innerHTML =
+    `<span style="color:#ffd700">${pct}%</span> voted ${winner} over ${loser}`;
+
+  pulseBar(mode, winner);
+
+  const cooldown = 30 * 60 * 1000;
+
+  if(voteCount >= 6 && Date.now() - lastTop5Time >= cooldown){
+    lastTop5Time = Date.now();
+    voteCount = 0;
+    return startTop5();
+  }
+
+  setTimeout(newBattle,400);
+
+
+}
+
+window.vote=vote;
+
+/* ===================== */
+/* 🔒 CORE MODULE: TOP 5 ENTRY SYSTEM */
+/* DO NOT MODIFY — DEPENDENCIES: USER RANKING FLOW */
+/* ===================== */
+function startTop5(){
+  inTop5=true;
+  document.getElementById("title").innerText="🔥 BUILD THE ULTIMATE TOP 5 🔥";
+
+  const b=document.getElementById("battle");
+  b.innerHTML=`<div id="grid"></div>`;
+
+  const g=document.getElementById("grid");
+
+  g.style.display="grid";
+  g.style.gridTemplateColumns="repeat(3,1fr)";
+  g.style.gap="10px";
+
+  top5=[];
+
+  streamers.forEach(s=>{
+    const d=document.createElement("div");
+    d.className="card";
+
+    d.innerHTML=`
+      <img src="${s.img}">
+      <div class="name">${s.name}</div>
+    `;
+
+    d.onclick=()=>{
+      const i=top5.indexOf(s.name);
+      if(i!==-1) top5.splice(i,1);
+      else if(top5.length<5) top5.push(s.name);
+
+      renderTop5(g);
+    };
+
+    g.appendChild(d);
+  });
+}
+
+/* ===================== */
+/* 🔒 CORE MODULE: TOP 5 RENDERER */
+/* DO NOT MODIFY — DEPENDENCIES: RANK DISPLAY / SELECTION STATE */
+/* ===================== */
+function renderTop5(g){
+
+  Array.from(g.children).forEach(el=>{
+    el.classList.remove("top5-selected");
+    const name = el.querySelector(".name").innerText.replace(/^#\d /,"");
+    el.querySelector(".name").innerHTML=name;
+  });
+
+  top5.forEach((n,i)=>{
+    Array.from(g.children).forEach(el=>{
+      if(el.innerText.includes(n)){
+        el.classList.add("top5-selected");
+        el.querySelector(".name").innerHTML =
+          `<span class="rank-num">#${i+1}</span> ${n}`;
+      }
+    });
+  });
+
+  if(top5.length===5) submitTop5();
+}
+
+/* ===================== */
+/* 🔒 CORE MODULE: TOP 5 SUBMISSION */
+/* DO NOT MODIFY — DEPENDENCIES: RESULT SCREEN / GAME RESET TIMER */
+/* ===================== */
+async function submitTop5(){
+
+  console.log("Top5 submitted:", top5);
+
+const sessionId =
+  localStorage.getItem("mog_sid") ||
+  (() => {
+    const id = crypto.randomUUID();
+    localStorage.setItem("mog_sid", id);
+    return id;
+  })();
+
+const top5Payload = {
+  updatedAt: Date.now(),
+  sessionId: sessionId
+};
+
+top5.forEach((name, index) => {
+  top5Payload[name] = increment(5 - index);
+});
+
+  await setDoc(doc(db,"stats","top5"), top5Payload, { merge:true });
+
+const snap = await getDoc(doc(db,"stats","top5"));
+
+const data = snap.data() || {};
+
+const globalTop5 = Object.entries(data)
+  .filter(([key]) => key !== "updatedAt" && key !== "sessionId")
+  .sort((a,b)=>b[1]-a[1])
+  .slice(0,5)
+  .map(x=>x[0]);
+
+  document.getElementById("battle").innerHTML =
+  "<h2>Global Top 5</h2>" +
+  globalTop5.map((s,i)=>`
+    <div class="row">
+      <img class="badge" src="${badges[i]}">
+      <img class="stream rank${i+1}" src="${getImg(s)}">
+      <span>${s}</span>
+    </div>
+  `).join("");
+
+  setTimeout(()=>{
+    inTop5=false;
+    voteCount=0;
+    newBattle();
+  },4000);
+}	
+
+/* ===================== */
+/* 🔒 CORE MODULE: CHART DASHBOARD */
+/* DO NOT MODIFY — DEPENDENCIES: RANKINGS UI / LIVE REFRESH */
+/* ===================== */
+window.toggleChart=async function(){
+
+  const grid=document.getElementById("chartGrid");
+
+  charts.forEach(c=>c.destroy());
+  charts=[];
+  grid.innerHTML="";
+
+  const modes=["click","charisma","mog","aura"];
+  const ranges=["Global"]; // temp disabled weekly/monthly "Weekly","Monthly","Yearly"
+
+  modes.forEach(mode=>{
+    const col=document.createElement("div");
+    col.className="chart-col";
+
+    ranges.forEach(r=>{
+      col.innerHTML += `
+        <div class="chart-item">
+          <h3 style="color:${
+mode==="click" ? "#00ff88" :
+mode==="charisma" ? "#ff00aa" :
+mode==="mog" ? "#00ffff" :
+"#bb66ff"
+};">${mode.toUpperCase()} POWER RANKINGS</h3>
+	
+          <canvas id="${mode}_${r}"></canvas>
+        </div>
+      `;
+    });
+
+    grid.appendChild(col);
+  });
+
+  const snap = await getDoc(doc(db,"stats","global"));
+  const data = snap.data() || {};
+
+  modes.forEach(mode=>{
+    const sorted = Object.entries(data[mode] || {})
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,10);
+
+    const labels = sorted.map(x=>x[0]);
+    const values = sorted.map(x=>x[1]);
+
+    ranges.forEach(r=>{
+      const ctx = document.getElementById(`${mode}_${r}`);
+      if(!ctx) return;
+
+      const chart = new Chart(ctx,{
+        type:"bar",
+        data:{
+          labels:labels,
+          datasets:[{
+            data:values,
+            backgroundColor:"#ff00aa",
+            borderColor:"#00ffff",
+            borderWidth:2
+          }]
+        },
+        options:{
+          plugins:{
+            legend:{display:false},
+            tooltip:{enabled:false}
+          },
+          scales:{
+            y:{
+              beginAtZero:true,
+              ticks:{display:false},
+              grid:{display:false}
+            }
+          }
+        }
+      });
+
+      chart._mode = mode;
+      charts.push(chart);
+    });
+  });
+
+};
+
+/* ===================== */
+/* 🔒 CORE MODULE: BOOT SEQUENCE */
+/* DO NOT MODIFY — DEPENDENCIES: INITIAL PAGE LOAD */
+/* ===================== */
+newBattle();
+toggleChart();
+
+</script>
+</body>
+</html>
