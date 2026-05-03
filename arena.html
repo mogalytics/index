@@ -73,6 +73,17 @@ body {
   gap:30px;
   grid-template-columns:repeat(4,1fr);
 }
+
+@media (max-width: 768px) {
+  .chart-grid {
+    grid-template-columns:repeat(2,1fr);
+    gap:15px;
+  }
+
+  .chart-item canvas {
+    height:240px !important;
+  }
+}
 .chart-col { display:flex; flex-direction:column; gap:30px; }
 .chart-item {
   background:#1a1a1a;
